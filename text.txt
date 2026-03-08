@@ -1,9 +1,0 @@
-Шилов Андрей Александрович
-
-https://learngitbranching.js.org/?locale=ru_RU
-
-1)Добавление: git add .
-2)коммит: git commit -m "название"
-3)загрузка: git push -u origin master
-
-17.01.23
