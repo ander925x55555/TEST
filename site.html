@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Маршрут по России: Северо-Запад + Соловки</title>
+    <!-- Подключаем Яндекс Карты API -->
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=6fd0f5ac-3b42-46cd-9fec-0fdc11dc5242&lang=ru_RU" type="text/javascript"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+
+        body {
+            background: #f0f4fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(145deg, #0a2f44 0%, #1b4f6e 100%);
+            color: white;
+            padding: 12px 28px;
+            box-shadow: 0 6px 14px rgba(0,20,30,0.25);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-weight: 400;
+            font-size: 2rem;
+        }
+        .header h1 span {
+            font-weight: 300;
+            color: #b5d9f0;
+        }
+        .header p {
+            font-size: 0.95rem;
+            opacity: 0.85;
+        }
+
+        .app-container {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .map-wrapper {
+            flex: 2.2;
+            height: 100%;
+            background: #c1d9e6;
+            position: relative;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            flex: 1.2;
+            min-width: 460px;
+            background-color: #ffffff;
+            border-left: 1px solid #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px 22px 18px;
+        }
+
+        .info-card {
+            background: #e7f0f9;
+            border-radius: 24px;
+            padding: 18px;
+            margin-bottom: 20px;
+            border-left: 5px solid #1e5b82;
+        }
+        .info-card h2 {
+            font-size: 1.8rem;
+            color: #0c3752;
+            font-weight: 500;
+        }
+        .info-card .coords {
+            background: #cbdbe9;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            display: inline-block;
+            margin: 8px 0 10px;
+            color: #1e3f5a;
+        }
+        .info-card .desc {
+            font-size: 0.98rem;
+            line-height: 1.5;
+            background: rgba(255,255,255,0.7);
+            padding: 12px 16px;
+            border-radius: 16px;
+            border: 1px solid #b9d0e2;
+        }
+
+        .planner {
+            background: #f9fcff;
+            border-radius: 24px;
+            padding: 18px 20px;
+            border: 1px solid #d4e0ec;
+        }
+        .planner h3 {
+            font-size: 1.5rem;
+            color: #123a52;
+            margin-bottom: 18px;
+            border-bottom: 2px solid #c3d9ec;
+            padding-bottom: 8px;
+        }
+
+        .route-selector {
+            background: #edf4fb;
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .fixed-point {
+            background: #d4e3f5;
+            border-radius: 30px;
+            padding: 12px 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid #1e5b82;
+        }
+        .point-badge {
+            background: #1e5b82;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .point-text {
+            font-weight: 500;
+            color: #0d3b58;
+        }
+        .return-badge {
+            background: #8aa0b8;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .waypoints-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0 8px;
+        }
+        .waypoints-header span {
+            font-weight: 600;
+            color: #1e4a6b;
+        }
+        .select-all-btn {
+            background: #d4e3f5;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1e4a6b;
+            cursor: pointer;
+            transition: 0.15s;
+            border: 1px solid #a0bedb;
+        }
+        .select-all-btn:hover {
+            background: #b9d0e8;
+        }
+
+        .waypoints-list {
+            max-height: 320px;
+            overflow-y: auto;
+            border: 1px solid #e2eaf2;
+            border-radius: 20px;
+            padding: 8px 12px;
+            background: white;
+            margin: 8px 0 15px;
+        }
+        .waypoint-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 6px;
+            border-bottom: 1px solid #ecf2f7;
+        }
+        .waypoint-row:last-child {
+            border-bottom: none;
+        }
+        .waypoint-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #1f6996;
+            margin-right: 14px;
+            cursor: pointer;
+        }
+        .waypoint-row label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #1a405b;
+            font-weight: 500;
+        }
+        .index-badge {
+            background: #345e83;
+            color: white;
+            border-radius: 30px;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .calculate-btn {
+            background: #1b5e8a;
+            border: none;
+            color: white;
+            padding: 16px 10px;
+            width: 100%;
+            border-radius: 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+            margin: 15px 0 20px;
+            border-bottom: 3px solid #0d3b58;
+        }
+        .calculate-btn:hover:not(:disabled) {
+            background: #226fa3;
+            transform: scale(1.01);
+        }
+        .calculate-btn:disabled {
+            background: #95aec7;
+            border-bottom: 3px solid #5e7a96;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .route-details {
+            background: #ddeeff;
+            border-radius: 24px;
+            padding: 18px;
+        }
+        .total-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px dashed #a0bedb;
+        }
+        .total-item {
+            text-align: center;
+        }
+        .total-item .label {
+            font-size: 0.85rem;
+            color: #2f587b;
+            font-weight: 600;
+        }
+        .total-item .value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #083452;
+            line-height: 1.2;
+        }
+        .total-item .unit {
+            font-size: 0.9rem;
+            color: #446688;
+        }
+
+        .legs-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .leg-item {
+            background: white;
+            border-radius: 18px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #1f6996;
+            font-size: 0.95rem;
+        }
+        .leg-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            color: #0d3b58;
+            margin-bottom: 6px;
+        }
+        .leg-transport {
+            background: #eef2f7;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            color: #1e4a6b;
+            display: inline-block;
+        }
+        .leg-details {
+            display: flex;
+            gap: 15px;
+            margin-top: 6px;
+            color: #365f7e;
+            font-size: 0.9rem;
+        }
+
+        .info-note {
+            background: #e7f3ff;
+            color: #1e5b82;
+            padding: 8px 12px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            margin: 10px 0 0;
+            text-align: center;
+            border: 1px solid #b9d0e8;
+        }
+
+        footer {
+            margin-top: 15px;
+            color: #5c6f87;
+            text-align: right;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Путешествие по <span>Северо-Западу России</span></h1>
+        <p>25 исторических точек · Кольцевой маршрут из Санкт-Петербурга</p>
+    </div>
+
+    <div class="app-container">
+        <div class="map-wrapper">
+            <div id="map"></div>
+        </div>
+
+        <div class="sidebar">
+            <div class="info-card" id="infoCard">
+                <h2 id="pointName">Санкт-Петербург</h2>
+                <div class="coords" id="pointCoords">59.9388, 30.3150</div>
+                <div class="desc" id="pointDesc">Стартовая точка маршрута. Отсюда начинается путешествие.</div>
+            </div>
+
+            <div class="planner">
+                <h3>🗺️ Планировщик маршрута</h3>
+                
+                <div class="route-selector">
+                    <div class="fixed-point">
+                        <span class="point-badge">🚗 СТАРТ</span>
+                        <span class="point-text">Санкт-Петербург</span>
+                    </div>
+                    
+                    <div class="fixed-point">
+                        <span class="return-badge">🏁 ФИНИШ</span>
+                        <span class="point-text">Санкт-Петербург (возврат)</span>
+                    </div>
+
+                    <div class="waypoints-header">
+                        <span>🏛️ Промежуточные точки (выберите для посещения)</span>
+                        <button class="select-all-btn" id="selectAllBtn">✅ Выбрать все</button>
+                    </div>
+                    <div class="waypoints-list" id="checklist">
+                        <!-- Точки для выбора -->
+                    </div>
+                </div>
+
+                <button class="calculate-btn" id="calculateBtn">Построить маршрут</button>
+
+                <div class="route-details" id="routeDetails">
+                    <div class="total-info">
+                        <div class="total-item">
+                            <div class="label">Общее время</div>
+                            <div class="value" id="totalTime">0</div>
+                            <div class="unit">часов</div>
+                        </div>
+                        <div class="total-item">
+                            <div class="label">Расстояние</div>
+                            <div class="value" id="totalDist">0</div>
+                            <div class="unit">км</div>
+                        </div>
+                    </div>
+                    <div id="legsContainer" class="legs-list">
+                        <div style="text-align: center; color: #5a7794; padding: 15px;">
+                            Нажмите "Построить маршрут", чтобы увидеть детали
+                        </div>
+                    </div>
+                    <div class="info-note" id="apiNote" style="display: none;">
+                        🗺️ Маршрут на карте построен Яндексом, время рассчитано приблизительно
+                    </div>
+                </div>
+            </div>
+            <footer>Время указано только на перемещение · оптимальный транспорт для каждого участка</footer>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --- ВСЕ ТОЧКИ МАРШРУТА (25 точек, включая Соловки и Вознесенье) ---
+            const points = [
+                { id:0, name:"Санкт-Петербург", lat:59.938784, lon:30.314997, desc:"Стартовая и конечная точка маршрута. Отсюда начинается и сюда возвращается путешествие по древним русским городам.", group:"start" },
+                { id:1, name:"Ивангород", lat:59.376490, lon:28.219712, desc:"Основан Иоанном III Великим как оборонительная крепость от Ливонской конфедерации. Сейчас там находится музей 'Ивангородская крепость'.", group:"northwest" },
+                { id:2, name:"Гдов", lat:58.744398, lon:27.819594, desc:"Основан в 1431 году при князе Дмитрии Александровиче Ростовском. На реке Гдовке была заложена крепость, которую можно осмотреть.", group:"northwest" },
+                { id:3, name:"Трутневские пещеры", lat:58.618070, lon:27.940687, desc:"Природная и историческая жемчужина псковской земли, древняя обитель монахов.", group:"northwest" },
+                { id:4, name:"Самолва", lat:58.290931, lon:27.622081, desc:"В этом селении располагается музей Ледового побоища и музей рыбаков, сохраняющий живые северно-русские традиции.", group:"northwest" },
+                { id:5, name:"Псков", lat:57.819307, lon:28.332792, desc:"В этом древнем городе расположены: Псковский Кром (Кремль), Троицкий собор, Приказная палата, Довмонтов город, Псковская крепость, Поганкины палаты, Спасо-Преображенский собор, Снетогорский монастырь, Церковь Василия на Горке, Музейный комплекс «Варлаамовский угол», Палаты Меньшиковых, Церковь Николы со Усохи, Ольгинская часовня и мост, Дом Печенко, Монумент Ледовому побоищу, и множество других памятников.", group:"northwest" },
+                { id:6, name:"Изборск", lat:57.705036, lon:27.863899, desc:"Древний населённый пункт с более чем 1200-летней историей. Здесь есть Изборская крепость, Словенские ручьи и историческая застройка.", group:"northwest" },
+                { id:7, name:"Печоры", lat:57.813756, lon:27.609352, desc:"В Печорах расположен древний монастырь, музей истории этого края и большое количество исторической застройки в городе.", group:"northwest" },
+                { id:8, name:"Остров", lat:57.342186, lon:28.352349, desc:"В городе Остров есть небольшой исторический центр, а также уникальный для России цепной мост.", group:"northwest" },
+                { id:9, name:"Себеж", lat:56.277403, lon:28.484823, desc:"Город с уютной исторической застройкой в центре и умиротворённой атмосферой Себежского озера.", group:"northwest" },
+                { id:10, name:"Великие Луки", lat:56.343703, lon:30.515671, desc:"Старинный исторический город с имперской застройкой в центре и Великолукской крепостью.", group:"northwest" },
+                { id:11, name:"Старая Русса", lat:57.990720, lon:31.355461, desc:"Древний город рядом с озером Ильмень. Здесь сохранилось множество зданий: Церковь Троицы Живоначальной, Воскресенский собор, Водонапорная башня и др.", group:"northwest" },
+                { id:13, name:"Великий Новгород", lat:58.522857, lon:31.269816, desc:"Новгородский детинец (Кремль), Софийский собор, Памятник «Тысячелетие России», Ярославово Дворище и Торг, Николо-Дворищенский собор, Церковь Спаса на Нередице, Музей «Витославлицы», Свято-Юрьев монастырь, Грановитая палата, Церковь Спаса на Ильине, Рюриково городище и десятки других сокровищ.", group:"northwest" },
+                { id:14, name:"Череповец", lat:59.122672, lon:37.903443, desc:"Воскресенский собор, Соборная горка, Дом-музей Милютина, Дом-музей Верещагиных, Усадьба Гальских, Художественный музей, Музей металлургической промышленности, Краеведческий музей, историческая застройка Советского проспекта.", group:"northwest" },
+                { id:15, name:"Вологда", lat:59.220501, lon:39.891523, desc:"Софийский собор, Вологодский кремль (Архиерейский двор), Музей кружева, Спасо-Прилуцкий монастырь, Дом Петра I, Церковь Иоанна Предтечи, Дом Засецких, Дом с лилиями, Музей «Мир забытых вещей», Памятник букве «О» и множество купеческих особняков.", group:"northwest" },
+                { id:16, name:"Кириллов", lat:59.859059, lon:38.374942, desc:"Огромный музей Кирилло-Белозерского монастыря.", group:"northwest" },
+                { id:17, name:"Белозерск", lat:60.032074, lon:37.792456, desc:"Белозерский Кремль, музей Белого озера, экспозиция «Белоозёрск исторический».", group:"northwest" },
+                { id:18, name:"Вознесенье", lat:61.010332, lon:35.482466, desc:"Посёлок Вознесенье — важная паромная переправа через реку Свирь. Связывает Ленинградскую область с Карелией. Здесь можно пересечь Свирь на пароме и продолжить путь на север.", group:"northwest" },
+                { id:19, name:"Петрозаводск", lat:61.785021, lon:34.346878, desc:"Рекомендуется посмотреть исторический центр, национальный музей Карелии, собор Александра Невского, набережную Онежского озера.", group:"northwest" },
+                { id:20, name:"Кижи", lat:62.082475, lon:35.207069, desc:"Кижи — всемирно известный музей-заповедник деревянного зодчества под открытым небом. Архитектурное сердце — 22-главый Преображенский собор (1714 г.), срубленный без единого гвоздя. Десятки памятников крестьянской и культовой архитектуры.", group:"northwest" },
+                { id:21, name:"Соловецкий монастырь", lat:65.026802, lon:35.709128, desc:"Соловецкий монастырь — уникальный ансамбль XVI века, построенный из огромных валунов и служивший мощной крепостью на севере России. На протяжении столетий он был крупнейшим духовным, хозяйственным и оборонным центром, а также местом трагических событий в годы советских репрессий.", group:"northwest" },
+                { id:22, name:"Лодейное Поле", lat:60.734547, lon:33.545886, desc:"Домик Петра, центр ремесел, краеведческий музей.", group:"northwest" },
+                { id:23, name:"Старая Ладога", lat:59.998936, lon:32.295800, desc:"Древняя крепость в устье реки Волхов — первая столица Руси.", group:"northwest" },
+                { id:24, name:"Шлиссельбург", lat:59.944959, lon:31.034754, desc:"Музей-крепость «Орешек», а также историческая застройка в центре города.", group:"northwest" }
+            ];
+
+            let map, placemarks = [];
+            let currentRoute = null;
+
+            // Функция обновления информации о точке
+            function updateInfoPanel(point) {
+                document.getElementById('pointName').innerText = point.name;
+                document.getElementById('pointCoords').innerText = point.lat.toFixed(4) + ', ' + point.lon.toFixed(4);
+                document.getElementById('pointDesc').innerText = point.desc;
+            }
+
+            // Заполнение чеклиста (все точки кроме СПб)
+            function populateChecklist() {
+                const checklist = document.getElementById('checklist');
+                
+                // Все точки кроме стартовой (0)
+                const points_list = points.filter(p => p.id !== 0).sort((a, b) => a.id - b.id);
+                
+                checklist.innerHTML = '';
+                points_list.forEach(p => {
+                    const row = document.createElement('div');
+                    row.className = 'waypoint-row';
+                    row.innerHTML = `
+                        <input type="checkbox" id="chk_${p.id}" value="${p.id}">
+                        <label for="chk_${p.id}">
+                            <span class="index-badge">${p.id}</span>
+                            ${p.name}
+                        </label>
+                    `;
+                    checklist.appendChild(row);
+                });
+            }
+
+            // Кнопка "Выбрать все"
+            document.getElementById('selectAllBtn').addEventListener('click', function() {
+                const checkboxes = document.querySelectorAll('#checklist input[type="checkbox"]');
+                const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                checkboxes.forEach(cb => cb.checked = !allChecked);
+            });
+
+            // Рекомендация транспорта
+            function recommendTransport(distance) {
+                if (distance < 50) return { mode: '🚗 Такси/Авто', icon: '🚗' };
+                if (distance < 150) return { mode: '🚆 Электричка', icon: '🚆' };
+                if (distance < 300) return { mode: '🚌 Автобус', icon: '🚌' };
+                if (distance < 600) return { mode: '🚂 Поезд', icon: '🚂' };
+                return { mode: '✈️ Самолёт', icon: '✈️' };
+            }
+
+            // Расчёт расстояния по прямой (Гаверсинус)
+            function haversineDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371;
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            // Расчёт маршрута (всегда по прямой, чтобы не зависеть от API)
+            function calculateRoute(routePoints) {
+                const legs = [];
+                let totalDistance = 0;
+                
+                for (let i = 0; i < routePoints.length - 1; i++) {
+                    const from = routePoints[i];
+                    const to = routePoints[i+1];
+                    
+                    // Расстояние по прямой
+                    const directDistance = haversineDistance(from.lat, from.lon, to.lat, to.lon);
+                    
+                    // Коэффициент извилистости дорог
+                    // Для северных регионов (выше 62 параллели) дороги более извилистые
+                    const isNorthern = (from.lat > 62 || to.lat > 62);
+                    const roadFactor = isNorthern ? 1.6 : 1.3;
+                    
+                    const roadDistance = directDistance * roadFactor;
+                    totalDistance += roadDistance;
+                    
+                    // Средняя скорость 50 км/ч (с учётом остановок)
+                    const timeHours = roadDistance / 50;
+                    
+                    const transport = recommendTransport(roadDistance);
+                    
+                    legs.push({
+                        from: from.name,
+                        to: to.name,
+                        distance: Math.round(roadDistance) + ' км',
+                        time: Math.round(timeHours * 10) / 10 + ' ч',
+                        transport: transport
+                    });
+                }
+                
+                return { legs, totalDistance };
+            }
+
+            // Отрисовка маршрута на карте через Яндекс (всегда пытаемся)
+            function drawYandexRoute(routePoints) {
+                if (!window.ymaps || !map) return false;
+                
+                try {
+                    // Удаляем предыдущий маршрут
+                    if (currentRoute) {
+                        map.geoObjects.remove(currentRoute);
+                    }
+                    
+                    // Создаём мультимаршрут
+                    const multiRoute = new ymaps.multiRouter.MultiRoute({
+                        referencePoints: routePoints.map(p => [p.lat, p.lon]),
+                        params: { results: 1 }
+                    }, {
+                        boundsAutoApply: true,
+                        wayPointVisible: true,
+                        routeStrokeColor: "#1f6996",
+                        routeStrokeWidth: 5
+                    });
+                    
+                    map.geoObjects.add(multiRoute);
+                    currentRoute = multiRoute;
+                    
+                    // Не ждём загрузки, просто возвращаем true
+                    return true;
+                } catch (e) {
+                    console.warn('Не удалось построить маршрут Яндекса:', e);
+                    return false;
+                }
+            }
+
+            // Обработка кнопки
+            document.getElementById('calculateBtn').addEventListener('click', function() {
+                const btn = this;
+                btn.disabled = true;
+                
+                // Собираем выбранные промежуточные точки
+                const selectedIds = Array.from(document.querySelectorAll('#checklist input:checked'))
+                    .map(cb => parseInt(cb.value))
+                    .sort((a, b) => a - b);
+
+                // Формируем полный маршрут: СПб -> выбранные точки -> СПб
+                const routePointIds = [0, ...selectedIds, 0];
+                const routePoints_data = routePointIds.map(id => points.find(p => p.id === id));
+                
+                if (routePoints_data.length < 3) { // СПб + хотя бы одна точка + СПб
+                    alert('Выберите хотя бы одну промежуточную точку');
+                    btn.disabled = false;
+                    return;
+                }
+
+                document.getElementById('legsContainer').innerHTML = '<div style="text-align:center; padding:20px;">⏳ Построение маршрута...</div>';
+
+                // 1. ВСЕГДА рисуем маршрут через Яндекс (если возможно)
+                const yandexDrawn = drawYandexRoute(routePoints_data);
+                
+                if (yandexDrawn) {
+                    document.getElementById('apiNote').style.display = 'block';
+                } else {
+                    document.getElementById('apiNote').style.display = 'none';
+                }
+                
+                // 2. ВСЕГДА считаем время и расстояние по прямой (независимо от API)
+                setTimeout(() => {
+                    const result = calculateRoute(routePoints_data);
+                    
+                    document.getElementById('totalTime').innerText = Math.round(result.totalDistance / 50 * 10) / 10;
+                    document.getElementById('totalDist').innerText = Math.round(result.totalDistance);
+
+                    let legsHtml = '';
+                    result.legs.forEach(leg => {
+                        legsHtml += `
+                            <div class="leg-item">
+                                <div class="leg-header">
+                                    <span>${leg.from} → ${leg.to}</span>
+                                    <span class="leg-transport">${leg.transport.icon} ${leg.transport.mode}</span>
+                                </div>
+                                <div class="leg-details">
+                                    <span>📏 ${leg.distance}</span>
+                                    <span>⏱️ ${leg.time}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    document.getElementById('legsContainer').innerHTML = legsHtml;
+                    btn.disabled = false;
+                }, 100); // Небольшая задержка для отрисовки карты
+            });
+
+            // Инициализация карты
+            ymaps.ready(function() {
+                map = new ymaps.Map('map', {
+                    center: [62.0, 40.0],
+                    zoom: 5,
+                    controls: ['zoomControl', 'fullscreenControl']
+                });
+
+                // Добавляем все точки
+                points.forEach(p => {
+                    let preset = 'islands#blueIcon';
+                    
+                    if (p.id === 0) {
+                        preset = 'islands#redIcon';
+                    } else if (p.id === 21) { // Соловки
+                        preset = 'islands#violetIcon';
+                    } else if (p.id === 18) { // Вознесенье
+                        preset = 'islands#blueIcon'; // Можно сделать особым, но пока синий
+                    } else {
+                        preset = 'islands#greenIcon';
+                    }
+
+                    const placemark = new ymaps.Placemark([p.lat, p.lon], {
+                        hintContent: p.name,
+                        balloonContent: `<strong>${p.name}</strong><br>${p.desc.substring(0, 150)}...`
+                    }, { preset });
+
+                    placemark.events.add('click', () => updateInfoPanel(p));
+                    map.geoObjects.add(placemark);
+                });
+
+                updateInfoPanel(points[0]);
+                populateChecklist();
+            });
+
+        })();
+    </script>
+</body>
+</html>
